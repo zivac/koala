@@ -1,0 +1,14 @@
+{
+  "name": "koala",
+  "version": "0.0.1",
+  "scripts": {
+    "start": "concurrently --kill-others \"tsc -w\" \"nodemon app.js\""
+  },
+  "dependencies": {
+    "concurrently": "^3.1.0",
+    "koa": "^1.2.4",
+    "koa-router": "^5.4.0",
+    "nodemon": "^1.11.0",
+    "typescript": "^2.0.3"
+  }
+}
