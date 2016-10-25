@@ -7,6 +7,37 @@ var bodyParser = require('koa-bodyparser');
 
 app.use(bodyParser());
 
+var models = {};
+var schema = {};
+
+//parsing models
+fs.readdir('models', function(err, files) {
+    var tsFiles = files.filter(function(filename) {
+        return filename.indexOf('.ts') == filename.length - 3;
+    });
+    var regExp = /^ *(public|private|_) *(\w+)(?: *(=|:) *(.+?)(?:;|=)(?: *(.+?);|\s)?)?/gm;
+    tsFiles.forEach(function(tsFile) {
+        var jsFile = tsFile.replace('.ts', '.js');
+        if (files.indexOf(jsFile) == -1) return;
+        var exports = require('./models/'+jsFile);
+        for(var modelName in exports) {
+            models[modelName] = exports[modelName];
+            schema[modelName] = {};
+        }
+        fs.readFile('models/'+tsFile, 'utf-8', function(err, code) {
+            while(match = regExp.exec(code)) {
+                if(match[3] == ':') {
+                    schema[modelName][match[2]] = match[4].trim();
+                } else {
+                    schema[modelName][match[2]] = 'any';
+                }
+            }
+            console.log(schema);
+        });
+    })
+})
+
+//parsing controllers
 fs.readdir('controllers', function(err, files) {
     var jsFiles = files.filter(function(filename) {
         return filename.indexOf('.js') == filename.length - 3;
@@ -19,6 +50,7 @@ fs.readdir('controllers', function(err, files) {
             var metadata = controller._metadata || {};
             var routeName = metadata.url || '/' + controller.prototype.constructor.name.toLowerCase().replace('controller', '');
             Object.getOwnPropertyNames(controller.prototype).forEach(function(fun) {
+                if(fun[0] == '_') return;
                 var route = routeName;
                 var method = controllerInstance[fun];
                 var metadata = method._metadata || {};
