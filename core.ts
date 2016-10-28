@@ -1,10 +1,26 @@
-export function Controller(properties: Object) {
+
+import { MongoService } from './core/MongoService';
+
+interface ControllerDescriptor {
+    url? : string,
+    before? : Array<Function>,
+    after? : Array<Function>
+}
+
+export function Controller(properties?: ControllerDescriptor) {
     return (target: Object) => {
         target['_metadata'] = properties;
     }
 }
 
-export function Route(properties: Object) {
+interface RouteDescriptor {
+    type? : string,
+    url? : string,
+    before? : Array<Function>,
+    after? : Array<Function>
+}
+
+export function Route(properties: RouteDescriptor) {
     return function(target, propertyKey: string, descriptor: PropertyDescriptor) {
         target[propertyKey]._metadata = properties;
     }
@@ -16,3 +32,91 @@ export function format(format: string) {
         else target['_metadata'].propertyKey = {format: format};
     }
 }
+
+var modelService = new MongoService();
+
+export class Model {
+
+    private _id;
+
+    constructor(init?: string | number | Object) {
+        var id;
+        if(typeof init === "object") {
+            for(var key in init) {
+                if(key === "_id" || key === "id") id = init[key];
+                else this[key] = init[key];
+            }
+        } else if(typeof init === "string" || typeof init === "number") {
+            id = init;
+        }
+        if(id) {
+            if(typeof window === "undefined")  this._id = new modelService.ObjectId(id);
+            else this._id = id;
+        }
+    }
+
+    _validate() {
+        
+    }
+
+    save() {
+        return modelService.save(this.constructor, this.constructor.name, this);
+    }
+
+    delete() {
+        return modelService.delete(this.constructor, this.constructor.name, this);
+    }
+
+    static find(filters?: Object) {
+        return modelService.find(this, this.name, filters);
+    }
+
+    static findOne(filters: Object) {
+        return modelService.findOne(this, this.name, filters);
+    }
+
+}
+
+/*export function ModelDecorator(properties?: Object) {
+
+    return function(constructor: any) {
+
+        var newConstructor = function(init: any) {
+            var object = new constructor();
+            var id;
+            if(typeof init === "object") {
+                for(var key in init) {
+                    if(key === "_id" || key === "id") id = init[key];
+                    else object[key] = init[key];
+                }
+            } else if(typeof init === "string" || typeof init === "number") {
+                id = init;
+            }
+            if(id) {
+                if(typeof window === "undefined")  object._id = new modelService.ObjectId(id);
+                else object._id = id;
+            }
+            return object;
+        }
+
+        //instance functions
+        constructor.prototype.save = function() {
+            return modelService.save(newConstructor, constructor.name, this);
+        }
+
+        constructor.prototype.delete = function() {
+            return modelService.delete(newConstructor, constructor.name, this);
+        }
+
+        //static functions
+        newConstructor['find'] = function(document) {
+            return modelService.find(newConstructor, constructor.name, document);
+        }
+
+        newConstructor['findOne'] = function(document) {
+            return modelService.findOne(newConstructor, constructor.name, document);
+        }
+
+        return newConstructor;
+    }
+}*/

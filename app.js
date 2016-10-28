@@ -1,11 +1,23 @@
 var koa = require('koa');
 var fs = require('fs');
 
-var app = koa();
+var app = new koa();
 var router = require('koa-router')();
 var bodyParser = require('koa-bodyparser');
 
 app.use(bodyParser());
+
+app.use(async function (ctx, next) {
+  try {
+    await next();
+  } catch (err) {
+    ctx.status = err.status || 500;
+    ctx.body = {
+        error: true,
+        message: err.message
+    }
+  }
+});
 
 var models = {};
 var schema = {};
@@ -26,13 +38,14 @@ fs.readdir('models', function(err, files) {
         }
         fs.readFile('models/'+tsFile, 'utf-8', function(err, code) {
             while(match = regExp.exec(code)) {
+                //console.log(match);
                 if(match[3] == ':') {
                     schema[modelName][match[2]] = match[4].trim();
                 } else {
                     schema[modelName][match[2]] = 'any';
                 }
             }
-            console.log(schema);
+            console.log(schema[modelName]);
         });
     })
 })
@@ -56,16 +69,16 @@ fs.readdir('controllers', function(err, files) {
                 var metadata = method._metadata || {};
                 if(metadata.url || fun != 'index') route += metadata.url || ('/' + fun);
                 var type = (metadata.type  && router[metadata.type.toLowerCase()])? metadata.type.toLowerCase() : 'all';
-                router[type](route, function *() {
+                router[type](route, async function (ctx) {
                     var params = getParamNames(controller.prototype[fun]).map((param) => {
-                        if(param == 'ctx') return this;
-                        else return this.request.query[param] || this.request.body[param];
+                        if(param == 'ctx') return ctx;
+                        else return ctx.request.query[param] || ctx.request.body[param];
                     })
                     try {
-                        var response = controllerInstance[fun].apply(controller.prototype, params);
-                        if(response) this.body = response;
+                        var response = await controllerInstance[fun].apply(controller.prototype, params);
+                        if(response) ctx.body = response;
                     } catch(err) {
-                        this.throw(err);
+                        ctx.throw(err);
                     }
                     
                 })
