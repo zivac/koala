@@ -6,7 +6,7 @@ export class Test extends Model {
     public name: string;
     //public phoneNumber: string | number;
     public categories: Array<string>;
-    public tags: string[];
+    public tags: string[][];
     public lotteryNumbers: [number];
     public author: {name: string};
     public comments: Array<{text: string, time: Date, author: {name: string}, likes: string[]}>;

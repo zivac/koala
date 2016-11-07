@@ -22,12 +22,54 @@ app.use(async function (ctx, next) {
 var models = {};
 var schema = {};
 
+var prepareObject = function(objectString) {
+    return objectString.split(',').map(param => 'public ' + param.trim() + ';').join("\n");
+}
+
+var objectExp = /\{(.*)\}/g;
+var arrayExp = /\[([^\]]+)\]|Array\<(.*)\>|(.*)\[\]/g;;
+
+var getSchema = function(code) {
+    var schema = {};
+    var regExp = /^ *(public|private|_) *(\w+)(?: *(=|:) *(.+?)(?:;|=)(?: *(.+?);|\s)?)?/gm;
+    var match = null;
+    while(match = regExp.exec(code)) {
+        if(match[3] == ':') {
+            var type = match[4].trim();
+            var objectMatch = objectExp.exec(type);
+            objectExp.lastIndex = 0;
+            if(objectMatch && objectMatch[0] == type) {
+                schema[match[2]] = getSchema(prepareObject(objectMatch[1]))
+            } else {
+                var array = schema, index = match[2];
+                while(true) {
+                    var arrayMatch = arrayExp.exec(type);
+                    arrayExp.lastIndex = 0;
+                    if(arrayMatch && arrayMatch[0] == type) {
+                        type = arrayMatch[1] || arrayMatch[2] || arrayMatch[3];
+                        array[index] = [];
+                        array = array[index];
+                        index = 0;
+                    } else {
+                        array[index] = objectMatch? getSchema(prepareObject(objectMatch[1])) : { type: type }
+                        break;
+                    }
+                }
+                
+            }
+        } else {
+            schema[match[2]] = { type: 'any' }
+        }
+    }
+    return schema;
+}
+
 //parsing models
 fs.readdir('models', function(err, files) {
     var tsFiles = files.filter(function(filename) {
         return filename.indexOf('.ts') == filename.length - 3;
     });
-    var regExp = /^ *(public|private|_) *(\w+)(?: *(=|:) *(.+?)(?:;|=)(?: *(.+?);|\s)?)?/gm;
+    
     tsFiles.forEach(function(tsFile) {
         var jsFile = tsFile.replace('.ts', '.js');
         if (files.indexOf(jsFile) == -1) return;
@@ -37,14 +79,7 @@ fs.readdir('models', function(err, files) {
             schema[modelName] = {};
         }
         fs.readFile('models/'+tsFile, 'utf-8', function(err, code) {
-            while(match = regExp.exec(code)) {
-                //console.log(match);
-                if(match[3] == ':') {
-                    schema[modelName][match[2]] = match[4].trim();
-                } else {
-                    schema[modelName][match[2]] = 'any';
-                }
-            }
+            schema[modelName] = getSchema(code);
             console.log(schema[modelName]);
         });
     })
