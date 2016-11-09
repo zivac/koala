@@ -5,6 +5,9 @@ var app = new koa();
 var router = require('koa-router')();
 var bodyParser = require('koa-bodyparser');
 
+var mongoose = require('mongoose');
+mongoose.connect('mongodb://localhost/test');
+
 app.use(bodyParser());
 
 app.use(async function (ctx, next) {
@@ -26,18 +29,20 @@ var prepareObject = function(objectString) {
     return objectString.split(',').map(param => 'public ' + param.trim() + ';').join("\n");
 }
 
+function capitalize(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
 var objectExp = /\{(.*)\}/g;
 var arrayExp = /\[([^\]]+)\]|Array\<(.*)\>|(.*)\[\]/g;;
 
 var getSchema = function(code) {
-    var schema = {};
+    var schema = {}, match = null;
     var regExp = /^ *(public|private|_) *(\w+)(?: *(=|:) *(.+?)(?:;|=)(?: *(.+?);|\s)?)?/gm;
-    var match = null;
     while(match = regExp.exec(code)) {
         if(match[3] == ':') {
             var type = match[4].trim();
             var objectMatch = objectExp.exec(type);
-            objectExp.lastIndex = 0;
             if(objectMatch && objectMatch[0] == type) {
                 schema[match[2]] = getSchema(prepareObject(objectMatch[1]))
             } else {
@@ -51,14 +56,14 @@ var getSchema = function(code) {
                         array = array[index];
                         index = 0;
                     } else {
-                        array[index] = objectMatch? getSchema(prepareObject(objectMatch[1])) : { type: type }
+                        array[index] = objectMatch? getSchema(prepareObject(objectMatch[1])) : { type: eval(capitalize(type)), defaultsTo: eval(match[5]) }
                         break;
                     }
                 }
                 
             }
         } else {
-            schema[match[2]] = { type: 'any' }
+            schema[match[2]] = { type: mongoose.Schema.Types.Mixed, defaultsTo: eval(match[4]) }
         }
     }
     return schema;
@@ -79,8 +84,9 @@ fs.readdir('models', function(err, files) {
             schema[modelName] = {};
         }
         fs.readFile('models/'+tsFile, 'utf-8', function(err, code) {
-            schema[modelName] = getSchema(code);
-            console.log(schema[modelName]);
+            var schema = getSchema(code)
+            models[modelName]['_schema'] = mongoose.model(modelName, schema);
+            console.log(schema);
         });
     })
 })

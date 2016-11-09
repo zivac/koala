@@ -38,6 +38,26 @@ let HelloController = class HelloController {
             };
         });
     }
+    save(ctx) {
+        return __awaiter(this, void 0, void 0, function* () {
+            var test = new Test_1.Test();
+            test.test = 'test 123';
+            test.setPassword('mexican');
+            console.log(test);
+            yield test.save();
+            ctx.body = 'saved';
+        });
+    }
+    find(ctx) {
+        return __awaiter(this, void 0, void 0, function* () {
+            var tests = yield Test_1.Test.find({}, { limit: 2 });
+            console.log(tests[0] instanceof Test_1.Test);
+            tests[0].setPassword('nigger');
+            tests[0].test = 'updated';
+            tests[0].save();
+            ctx.body = tests;
+        });
+    }
     fff(la, ctx) {
         console.log('handling', la);
         ctx.body = la;

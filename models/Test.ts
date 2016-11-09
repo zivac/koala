@@ -2,19 +2,24 @@ import {Model, format} from '../core';
 
 export class Test extends Model {
 
-    public class: string = 'default';
+    public test = 'test';
+    public class: String;
     public name: string;
     //public phoneNumber: string | number;
-    public categories: Array<string>;
-    public tags: string[][];
-    public lotteryNumbers: [number];
-    public author: {name: string};
-    public comments: Array<{text: string, time: Date, author: {name: string}, likes: string[]}>;
+    public categories: Array<String[]>;
+    public tags: Array<String[]>;
+    public lotteryNumbers: [String];
+    public author: {name: String};
+    public comments: Array<{text: String, time: Date, author: {name: String}, likes: String[]}>;
 
-    private password: string;
+    public password: String;
 
-    setPassword = function(password: string) {
+    setPassword(password: String) {
+        console.log('called', password);
         this.password = password;
+        this.test = 'changed';
+        console.log(this);
+        console.log(this.password);
     }
 
 }

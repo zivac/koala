@@ -16,6 +16,7 @@ export class HelloController {
 
     async index(name, email, ctx) {
         var test = new Test({name, email});
+
         //test.save();
         //var test = await Test.findOne({name, email});
         test.setPassword('test');
@@ -24,6 +25,25 @@ export class HelloController {
             url: ctx.url,
             response: test
         };
+    }
+
+    async save(ctx) {
+        var test = new Test();
+
+        test.test = 'test 123';
+        test.setPassword('mexican');
+        console.log(test);
+        await test.save();
+        ctx.body = 'saved';
+    }
+
+    async find(ctx) {
+        var tests = await Test.find({}, {limit: 2});
+        console.log(tests[0] instanceof Test);
+        tests[0].setPassword('nigger');
+        tests[0].test = 'updated';
+        tests[0].save();
+        ctx.body = tests;
     }
 
     @Route({

@@ -3,10 +3,14 @@ const core_1 = require('../core');
 class Test extends core_1.Model {
     constructor() {
         super(...arguments);
-        this.class = 'default';
-        this.setPassword = function (password) {
-            this.password = password;
-        };
+        this.test = 'test';
+    }
+    setPassword(password) {
+        console.log('called', password);
+        this.password = password;
+        this.test = 'changed';
+        console.log(this);
+        console.log(this.password);
     }
 }
 exports.Test = Test;

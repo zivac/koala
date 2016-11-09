@@ -1,5 +1,9 @@
 
-import { MongoService } from './core/MongoService';
+var WatchJS = require("watchjs");
+var mongodb = require("mongodb");
+var watch = WatchJS.watch;
+var unwatch = WatchJS.unwatch;
+var ObjectId = mongodb.ObjectId;
 
 interface ControllerDescriptor {
     url? : string,
@@ -33,46 +37,90 @@ export function format(format: string) {
     }
 }
 
-var modelService = new MongoService();
-
 export class Model {
 
     private _id;
+    private _schema;
 
     constructor(init?: string | number | Object) {
         var id;
         if(typeof init === "object") {
             for(var key in init) {
                 if(key === "_id" || key === "id") id = init[key];
-                else this[key] = init[key];
+                else {
+                    this[key] = init[key];
+                    if(this.constructor['_schema'].schema.obj[key] && this.constructor['_schema'].schema.obj[key]['defaultsTo']) {
+                        watch(this, key, (key, operation, value) => {
+                            console.log(value, operation, key)
+                            if(operation == 'set') this[key] = init[key];
+                            unwatch(this, key);
+                        })
+                    }
+                }
             }
         } else if(typeof init === "string" || typeof init === "number") {
             id = init;
         }
         if(id) {
-            if(typeof window === "undefined")  this._id = new modelService.ObjectId(id);
+            if(typeof window === "undefined")  this._id = new ObjectId(id);
             else this._id = id;
         }
     }
 
-    _validate() {
-        
-    }
+    _validate() {}
 
     save() {
-        return modelService.save(this.constructor, this.constructor.name, this);
+        //return modelService.save(this.constructor, this.constructor.name, this);
+        return new Promise((resolve, reject) => {
+            var schema = this.constructor['_schema'];
+            var instance = new schema(this);
+            instance.save((err) => {
+                if(err) {
+                    console.log(JSON.stringify(err));
+                    reject(err);
+                }
+                else resolve();
+            })
+        });
     }
 
     delete() {
-        return modelService.delete(this.constructor, this.constructor.name, this);
+        //return modelService.delete(this.constructor, this.constructor.name, this);
+        return new Promise((resolve, reject) => {
+            var schema = this.constructor['_schema'];
+            schema.remove({_id: this._id}, (err) => {
+                if(err) reject(err);
+                else resolve();
+            })
+        })
     }
 
-    static find(filters?: Object) {
-        return modelService.find(this, this.name, filters);
+    static find(filters?: Object, bla?: Object) {
+
+        //return modelService.find(this, this.name, filters);
+
+        return new Promise((resolve, reject) => {
+            var schema = this['_schema'];
+            var lala = bla['select'];
+            delete bla['select'];
+            schema.find(filters, lala, bla).exec((err, items) => {
+                if(err) reject(err);
+                var objects = items.map(item => new this(item));
+                console.log(objects)
+                resolve(objects);
+            });
+        })
     }
 
     static findOne(filters: Object) {
-        return modelService.findOne(this, this.name, filters);
+        //return modelService.findOne(this, this.name, filters);
+        return new Promise((resolve, reject) => {
+            var schema = this['_schema'];
+            schema.findOne(filters, (err) => {
+                if(err) reject(err);
+                else resolve();
+            })
+        })
     }
 
 }
